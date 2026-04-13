@@ -1,26 +1,25 @@
 <?php
-/**
- * cors.php
- * Handles Cross-Origin Resource Sharing (CORS) for the Expense Tracker API.
- * This allows the S3 bucket to communicate with the EC2/ALB backend.
- */
+require 'vendor/autoload.php';
+use Aws\Ssm\SsmClient;
 
-// 1. Allow any origin to access this API (Essential for S3-to-ALB communication)
-header("Access-Control-Allow-Origin: *");
+// Initialize the SSM Client to fetch RDS credentials securely
+$ssm = new SsmClient([
+    'version' => 'latest',
+    'region'  => 'us-east-1' 
+]);
 
-// 2. Specify which HTTP methods are allowed
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT");
+try {
+    // Retrieve connection details from AWS Parameter Store
+    $host   = $ssm->getParameter(['Name' => '/expense-app/db/host'])['Parameter']['Value'];
+    $dbname = $ssm->getParameter(['Name' => '/expense-app/db/name'])['Parameter']['Value'];
+    $user   = $ssm->getParameter(['Name' => '/expense-app/db/user'])['Parameter']['Value'];
+    $pass   = $ssm->getParameter(['Name' => '/expense-app/db/password', 'WithDecryption' => true])['Parameter']['Value'];
 
-// 3. Allow specific headers (Content-Type is required for JSON payloads)
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-
-// 4. Set the content type to JSON for all responses
-header('Content-Type: application/json');
-
-// 5. Handle the "Preflight" OPTIONS request automatically sent by browsers
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    // Return a 200 OK status and exit immediately for preflight checks
-    http_response_code(200);
-    exit(0);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(["error" => "Database connection failed"]);
+    exit;
 }
 ?>
