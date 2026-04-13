@@ -1,25 +1,30 @@
 <?php
-require 'vendor/autoload.php';
-use Aws\Ssm\SsmClient;
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE");
+header("Access-Control-Allow-Headers: Content-Type");
 
-// Initialize the SSM Client to fetch RDS credentials securely
-$ssm = new SsmClient([
-    'version' => 'latest',
-    'region'  => 'us-east-1' 
-]);
+function get_param($name) {
+    // Uses the server CLI directly, bypassing vendor/autoload issues
+    $command = "/usr/bin/aws ssm get-parameter --name \"$name\" --with-decryption --query \"Parameter.Value\" --output text --region us-east-1 2>&1";
+    $value = shell_exec($command);
+    return ($value !== null) ? trim($value) : null;
+}
+
+// Updated to match YOUR parameter names
+$host   = get_param('/expense-app/db/host');
+$dbname = get_param('/expense-app/db/name');      
+$user   = get_param('/expense-app/db/user');
+$pass   = get_param('/expense-app/db/password');
 
 try {
-    // Retrieve connection details from AWS Parameter Store
-    $host   = $ssm->getParameter(['Name' => '/expense-app/db/host'])['Parameter']['Value'];
-    $dbname = $ssm->getParameter(['Name' => '/expense-app/db/name'])['Parameter']['Value'];
-    $user   = $ssm->getParameter(['Name' => '/expense-app/db/user'])['Parameter']['Value'];
-    $pass   = $ssm->getParameter(['Name' => '/expense-app/db/password', 'WithDecryption' => true])['Parameter']['Value'];
-
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    if (empty($host) || empty($user) || empty($pass) || empty($dbname)) {
+        throw new Exception("Missing SSM Parameters.");
+    }
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (Exception $e) {
+} catch(Exception $e) {
     http_response_code(500);
-    echo json_encode(["error" => "Database connection failed"]);
+    echo json_encode(['status' => 'error', 'message' => 'DB Connection Failed: ' . $e->getMessage()]);
     exit;
 }
 ?>
