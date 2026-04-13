@@ -9,10 +9,12 @@ try {
     $stmt->execute([$selected_date]);
     $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode($expenses);
+    // 4. Always return a JSON array (even if empty) for the frontend loop
+    echo json_encode($expenses ? $expenses : []);
     
 } catch(PDOException $e) {
+    // 5. Provide database error feedback in JSON format
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed.']);
+    echo json_encode(['error' => 'Database connection failed.', 'details' => $e->getMessage()]);
 }
 ?>
