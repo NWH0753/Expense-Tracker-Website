@@ -30,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Add Expense</title>
 
     <!-- S3 CSS (if you use S3) -->
-    <link rel="stylesheet" href="https://your-bucket.s3.amazonaws.com/style.css">
+    <link rel="stylesheet" href="https://sourcebucket5924755.s3.us-east-1.amazonaws.com/style.css">
 </head>
 
 <body>
