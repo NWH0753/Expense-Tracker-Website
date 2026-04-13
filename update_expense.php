@@ -1,34 +1,27 @@
 <?php
-include 'cors.php';
 include 'db.php';
+header('Content-Type: application/json');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-    // 3. Support JSON input parsing for JavaScript fetch() calls
     $input = json_decode(file_get_contents("php://input"), true);
     
-    // 4. Hybrid retrieval: checks JSON payload first, then falls back to traditional $_POST
-    $id             = isset($input['id'])             ? $input['id']             : (isset($_POST['id']) ? $_POST['id'] : 0);
-    $item_name      = isset($input['item_name'])      ? $input['item_name']      : (isset($_POST['item_name']) ? $_POST['item_name'] : null);
-    $category       = isset($input['category'])       ? $input['category']       : (isset($_POST['category']) ? $_POST['category'] : null);
-    $amount         = isset($input['amount'])         ? $input['amount']         : (isset($_POST['amount']) ? $_POST['amount'] : null);
-    $expense_date   = isset($input['expense_date'])   ? $input['expense_date']   : (isset($_POST['expense_date']) ? $_POST['expense_date'] : null);
-    $payment_method = isset($input['payment_method']) ? $input['payment_method'] : (isset($_POST['payment_method']) ? $_POST['payment_method'] : null);
-    $note           = isset($input['note'])           ? $input['note']           : (isset($_POST['note']) ? $_POST['note'] : '');
+    $id = isset($input['id']) ? $input['id'] : $_POST['id'];
+    $item_name = isset($input['item_name']) ? $input['item_name'] : $_POST['item_name'];
+    $category = isset($input['category']) ? $input['category'] : $_POST['category'];
+    $amount = isset($input['amount']) ? $input['amount'] : $_POST['amount'];
+    $expense_date = isset($input['expense_date']) ? $input['expense_date'] : $_POST['expense_date']; 
+    $payment_method = isset($input['payment_method']) ? $input['payment_method'] : $_POST['payment_method']; 
+    $note = isset($input['note']) ? $input['note'] : $_POST['note']; 
 
     try {
         $sql = "UPDATE expenses SET item_name=?, category=?, amount=?, expense_date=?, payment_method=?, note=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$item_name, $category, $amount, $expense_date, $payment_method, $note, $id]);
         
-        // 5. Return a clean JSON success status
         echo json_encode(['status' => 'success']);
     } catch(PDOException $e) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => 'Database update failed.']);
     }
-} else {
-    http_response_code(405);
-    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
 }
 ?>
