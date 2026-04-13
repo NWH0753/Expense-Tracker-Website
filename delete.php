@@ -1,0 +1,15 @@
+<?php
+include 'cors.php';
+include 'db.php';
+
+$id = isset($_GET['id']) ? $_GET['id'] : 0;
+
+if ($id) {
+    $sql = "DELETE FROM expenses WHERE id=?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$id]);
+    echo json_encode(['status' => 'success']);
+} else {
+    echo json_encode(['error' => 'No ID provided']);
+}
+?>
