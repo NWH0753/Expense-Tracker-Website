@@ -4,111 +4,38 @@ include 'db.php';
 
 // -------------------- BACKEND (API) --------------------
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    
+    // 3. Enable JSON input parsing for fetch() requests
+    $input = json_decode(file_get_contents("php://input"), true);
+    
+    // 4. Hybrid retrieval: checks JSON first, then falls back to traditional $_POST
+    $item_name      = isset($input['item_name'])      ? $input['item_name']      : (isset($_POST['item_name']) ? $_POST['item_name'] : null);
+    $category       = isset($input['category'])       ? $input['category']       : (isset($_POST['category']) ? $_POST['category'] : null);
+    $amount         = isset($input['amount'])         ? $input['amount']         : (isset($_POST['amount']) ? $_POST['amount'] : null);
+    $expense_date   = isset($input['expense_date'])   ? $input['expense_date']   : (isset($_POST['expense_date']) ? $_POST['expense_date'] : null);
+    $payment_method = isset($input['payment_method']) ? $input['payment_method'] : (isset($_POST['payment_method']) ? $_POST['payment_method'] : null);
+    $note           = isset($input['note'])           ? $input['note']           : (isset($_POST['note']) ? $_POST['note'] : '');
 
-    $item_name = $_POST['item_name'];
-    $category = $_POST['category'];
-    $amount = $_POST['amount'];
-    $expense_date = $_POST['expense_date']; 
-    $payment_method = $_POST['payment_method'];
-    $note = $_POST['note'];
+    try {
+        $sql = "INSERT INTO expenses (item_name, category, amount, expense_date, payment_method, note) 
+                VALUES (?, ?, ?, ?, ?, ?)";
 
-    $sql = "INSERT INTO expenses (item_name, category, amount, expense_date, payment_method, note)
-            VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$item_name, $category, $amount, $expense_date, $payment_method, $note]);
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$item_name, $category, $amount, $expense_date, $payment_method, $note]);
-
-    echo json_encode(['status' => 'success']);
+        // 5. Consistent JSON response for the frontend
+        echo json_encode(['status' => 'success']);
+    } catch(PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
     exit;
+} else {
+    http_response_code(405);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
 }
 ?>
 
-<!-- -------------------- FRONTEND (HTML) -------------------- -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Add Expense</title>
-
-    <!-- S3 CSS (if you use S3) -->
-    <link rel="stylesheet" href="https://your-bucket.s3.amazonaws.com/style.css">
-</head>
-
-<body>
-<div class="container">
-
-    <div class="header-line"><h1>My Expense Tracker</h1></div>
-
-    <div class="title-box">Add New Expense</div>
-
-    <div class="form-container">
-        <form id="expenseForm">
-
-            <input type="hidden" name="expense_date" id="expense_date">
-
-            <div class="form-group">
-                <label>Item Name</label>
-                <input type="text" name="item_name" required>
-            </div>
-
-            <div class="form-group">
-                <label>Category</label>
-                <select name="category" required>
-                    <option value="Food & Dining">Food & Dining</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Health & Fitness">Health & Fitness</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Payment Method</label>
-                <select name="payment_method" required>
-                    <option value="Cash">Cash</option>
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="E-Wallet">E-Wallet</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Amount (RM)</label>
-                <input type="number" step="0.01" name="amount" required>
-            </div>
-
-            <div class="form-group">
-                <label>Note</label>
-                <textarea name="note"></textarea>
-            </div>
-
-            <button type="submit">Save Expense</button>
-        </form>
-    </div>
-
-</div>
-
-<script>
-const urlParams = new URLSearchParams(window.location.search);
-const targetDate = urlParams.get('date') || new Date().toISOString().split('T')[0];
-
-document.getElementById('expense_date').value = targetDate;
-
-document.getElementById('expenseForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    fetch('', {   // SAME FILE (VERY IMPORTANT)
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success') {
-            window.location.href = `index.php`;
-        }
-    });
 });
 </script>
 
